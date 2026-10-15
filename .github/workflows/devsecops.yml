@@ -72,7 +72,7 @@ jobs:
         run: .\.sonar\scanner\dotnet-sonarscanner begin /k:"InnoAuthApi" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
 
       - name: Build .NET Project
-        run: dotnet build --configuration Release
+        run: dotnet build AuthApi/AuthApi.slnx --configuration Release
 
       - name: SonarQube End
         env:
