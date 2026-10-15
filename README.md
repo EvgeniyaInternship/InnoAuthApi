@@ -16,7 +16,7 @@ Before building and running this project locally, ensure you have the following 
 
    ```bash
    git clone https://github.com/EvgeniyaInternship/InnoAuthApi.git
-   cd AuthApi
+   cd InnoAuthApi/AuthApi
    ```
 
 2. **Restore dependencies**
@@ -46,7 +46,7 @@ Before building and running this project locally, ensure you have the following 
    Once started, the service will be accessible locally at:
 
    ```text
-   https://localhost:5119
+   https://localhost:7165
    http://localhost:5119
    ```
 
