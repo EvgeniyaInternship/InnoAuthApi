@@ -16,7 +16,7 @@ Before building and running this project locally, ensure you have the following 
 
    ```bash
    git clone https://github.com/EvgeniyaInternship/InnoAuthApi.git
-   cd InnoAuthApi
+   cd AuthApi
    ```
 
 2. **Restore dependencies**
@@ -36,18 +36,18 @@ Before building and running this project locally, ensure you have the following 
    Run the API project directly using the `.NET CLI`:
 
    ```bash
-   dotnet run --project InnoAuthApi.Api
+   dotnet run --project AuthApi.Api
    ```
 
-   *(If your startup project directory is named differently, adjust `InnoAuthApi.Api` to match your startup project folder).*
+   *(If your startup project directory is named differently, adjust `AuthApi.Api` to match your startup project folder).*
 
 5. **Verify the service**
 
    Once started, the service will be accessible locally at:
 
    ```text
-   https://localhost:5001
-   http://localhost:5000
+   https://localhost:5119
+   http://localhost:5119
    ```
 
 ## Development & CI/CD Pipeline
