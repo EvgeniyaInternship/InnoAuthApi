@@ -1,0 +1,85 @@
+name: DevSecOps Pipeline (CodeQL, Gitleaks, SonarQube)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  gitleaks:
+    name: Gitleaks (Secret Detection)
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Install & Run Gitleaks
+        run: |
+          if (-not (Test-Path "C:\tools\gitleaks.exe")) {
+            New-Item -ItemType Directory -Force -Path "C:\tools"
+            Invoke-WebRequest -Uri "https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_windows_x64.zip" -OutFile "C:\tools\gitleaks.zip"
+            Expand-Archive -Path "C:\tools\gitleaks.zip" -DestinationPath "C:\tools" -Force
+            Remove-Item "C:\tools\gitleaks.zip"
+          }
+          git config --global --add safe.directory "*"
+          
+          C:\tools\gitleaks.exe detect --source="." --verbose --redact
+        shell: powershell
+
+  security-and-quality:
+    name: CodeQL & SonarQube Analysis
+    runs-on: self-hosted
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '10.0.x'
+          global-json-file: '' 
+        env:
+          DOTNET_INSTALL_DIR: 'C:\actions-runner\_work\_tool\dotnet'
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17' 
+
+      - name: Install SonarScanner for .NET
+        run: dotnet tool install dotnet-sonarscanner --tool-path .\.sonar\scanner
+
+      - name: SonarQube Begin
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: .\.sonar\scanner\dotnet-sonarscanner begin /k:"ProfilesApi" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}"
+
+      - name: Build .NET Project
+        run: dotnet build ProfilesApi/ProfilesApi.slnx --configuration Release
+
+      - name: SonarQube End
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          wait-for-processing: false
