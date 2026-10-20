@@ -25,8 +25,8 @@ public static class AuthenticationExtensions
                 {
                     ValidateIssuer = true,
                     ValidIssuer = authority,
-                    ValidateAudience = false,
-                    //ValidAudience = audience,
+                    ValidateAudience = true,
+                    ValidAudience = audience,
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromSeconds(30)
                 };
