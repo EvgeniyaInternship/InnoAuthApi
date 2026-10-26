@@ -1,11 +1,12 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
-using AuthApi.Api.Configuration;
 using AuthApi.Api.Constants.Keycloak;
 using AuthApi.Api.DTOs.Requests;
 using AuthApi.Api.DTOs.Responses;
 using AuthApi.Api.Exceptions;
+using AuthApi.Api.Extensions;
 using AuthApi.Api.Interfaces;
+using AuthApi.Api.Options;
 using Microsoft.Extensions.Options;
 
 namespace AuthApi.Api.Services;
@@ -56,7 +57,7 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
         }
         catch (InvalidGrantException ex)
         {
-            throw new ArgumentException("The provided authorization code is invalid or has expired.", nameof(request.Code), ex);
+            throw new ArgumentException("The provided authorization code is invalid or has expired.", request.Code, ex);
         }
     }
 
@@ -74,10 +75,10 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
         if (!response.IsSuccessStatusCode)
         {
-            var error = await ReadErrorAsync(response, cancellationToken);
+            var (Code, Message) = await response.ReadKeycloakErrorAsync(cancellationToken);
             throw response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized
-                ? new UnauthorizedAccessException($"Logout rejected by identity provider: {error.Message}")
-                : new IdentityProviderException($"Logout failed with status {(int)response.StatusCode}: {error.Message}");
+                ? new UnauthorizedAccessException($"Logout rejected by identity provider: {Message}")
+                : new IdentityProviderException($"Logout failed with status {(int)response.StatusCode}: {Message}");
         }
     }
 
@@ -108,14 +109,14 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
         if (!response.IsSuccessStatusCode)
         {
-            var error = await ReadErrorAsync(response, cancellationToken);
+            var (Code, Message) = await response.ReadKeycloakErrorAsync(cancellationToken);
 
             throw response.StatusCode switch
             {
                 HttpStatusCode.Conflict => new ConflictException($"User with email '{request.Email}' already exists."),
-                HttpStatusCode.BadRequest => new ArgumentException($"User registration failed: {error.Message}"),
+                HttpStatusCode.BadRequest => new ArgumentException($"User registration failed: {Message}"),
                 HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new InvalidOperationException("API service account lacks 'manage-users' permissions in Keycloak."),
-                _ => new IdentityProviderException($"Registration failed with status {(int)response.StatusCode}: {error.Message}")
+                _ => new IdentityProviderException($"Registration failed with status {(int)response.StatusCode}: {Message}")
             };
         }
 
@@ -139,14 +140,14 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
         if (!response.IsSuccessStatusCode)
         {
-            var error = await ReadErrorAsync(response, cancellationToken);
+            var (Code, Message) = await response.ReadKeycloakErrorAsync(cancellationToken);
 
-            if (string.Equals(error.Code, "invalid_grant", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Code, "invalid_grant", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidGrantException(error.Message);
+                throw new InvalidGrantException(Message);
             }
 
-            throw new IdentityProviderException(error.Message);
+            throw new IdentityProviderException(Message);
         }
 
         return await response.Content.ReadFromJsonAsync<KeycloakTokenResponseDto>(cancellationToken: cancellationToken)
@@ -165,21 +166,6 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
         catch (IdentityProviderException ex)
         {
             throw new InvalidOperationException("Failed to acquire service account token. Verify Keycloak client credentials.", ex);
-        }
-    }
-
-    private static async Task<(string? Code, string Message)> ReadErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var payload = await response.Content.ReadFromJsonAsync<KeycloakErrorDto>(cancellationToken: cancellationToken);
-            var message = payload?.ErrorDescription ?? payload?.ErrorMessage ?? payload?.Error ?? response.ReasonPhrase ?? "Unknown error.";
-            return (payload?.Error, message);
-        }
-        catch
-        {
-            var raw = await response.Content.ReadAsStringAsync(cancellationToken);
-            return (null, string.IsNullOrWhiteSpace(raw) ? response.ReasonPhrase ?? "Unknown error." : raw);
         }
     }
 }

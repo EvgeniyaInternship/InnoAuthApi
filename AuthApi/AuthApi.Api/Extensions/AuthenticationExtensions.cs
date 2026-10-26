@@ -1,4 +1,4 @@
-﻿using AuthApi.Api.Configuration;
+﻿using AuthApi.Api.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 

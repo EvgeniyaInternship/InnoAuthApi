@@ -7,7 +7,7 @@ namespace AuthApi.Api.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public sealed class AuthController(IAuthService authService) : ControllerBase
+public sealed class AuthController(IAuthService authService, IAuthCookieService cookieService) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
@@ -28,6 +28,8 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequestDto dto, CancellationToken cancellationToken)
     {
         var tokens = await authService.LoginAsync(dto, cancellationToken);
+        cookieService.SetAuthCookies(Response, tokens.AccessToken, tokens.ExpiresIn, tokens.RefreshToken, tokens.RefreshExpiresIn);
+
         return Ok(tokens);
     }
 
@@ -39,6 +41,8 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto dto, CancellationToken cancellationToken)
     {
         var tokens = await authService.RefreshTokenAsync(dto, cancellationToken);
+        cookieService.SetAuthCookies(Response, tokens.AccessToken, tokens.ExpiresIn, tokens.RefreshToken, tokens.RefreshExpiresIn);
+
         return Ok(tokens);
     }
 
@@ -60,6 +64,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto dto, CancellationToken cancellationToken)
     {
         await authService.LogoutAsync(dto, cancellationToken);
+        cookieService.ClearAuthCookies(Response);
         return NoContent();
     }
 }

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using AuthApi.Api.Exceptions;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -16,14 +17,17 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             ArgumentException or ArgumentNullException =>
                 (StatusCodes.Status400BadRequest, "Invalid Request"),
 
+            ConflictException =>
+                (StatusCodes.Status409Conflict, "Resource Conflict"),
+
             UnauthorizedAccessException =>
                 (StatusCodes.Status401Unauthorized, "Unauthorized"),
 
             KeyNotFoundException =>
                 (StatusCodes.Status404NotFound, "Resource Not Found"),
 
-            HttpRequestException httpEx =>
-                ((int?)httpEx.StatusCode ?? StatusCodes.Status502BadGateway, "Identity Provider Error"),
+            IdentityProviderException =>
+                (StatusCodes.Status502BadGateway, "Identity Provider Error"),
 
             InvalidOperationException =>
                 (StatusCodes.Status400BadRequest, "Bad Request"),

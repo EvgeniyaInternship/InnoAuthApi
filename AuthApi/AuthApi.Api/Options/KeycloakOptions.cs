@@ -1,4 +1,4 @@
-﻿namespace AuthApi.Api.Configuration;
+﻿namespace AuthApi.Api.Options;
 
 public sealed class KeycloakOptions
 {
