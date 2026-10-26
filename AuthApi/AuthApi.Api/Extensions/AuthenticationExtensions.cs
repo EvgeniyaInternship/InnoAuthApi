@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using AuthApi.Api.Configuration;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
 namespace AuthApi.Api.Extensions;
@@ -9,26 +10,27 @@ public static class AuthenticationExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var keycloakSection = configuration.GetSection("Keycloak");
-        var authority = keycloakSection["Authority"];
-        var audience = keycloakSection["Audience"];
-        var requireHttpsMetadata = keycloakSection.GetValue<bool>("RequireHttpsMetadata");
+        var options = configuration
+            .GetSection(KeycloakOptions.SectionName)
+            .Get<KeycloakOptions>() ?? new KeycloakOptions();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+            .AddJwtBearer(jwtOptions =>
             {
-                options.Authority = authority;
-                options.Audience = audience;
-                options.RequireHttpsMetadata = requireHttpsMetadata;
+                jwtOptions.Authority = options.Authority;
+                jwtOptions.Audience = options.ClientId;
+                jwtOptions.RequireHttpsMetadata = options.RequireHttpsMetadata;
 
-                options.TokenValidationParameters = new TokenValidationParameters
+                jwtOptions.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = authority,
+                    ValidIssuer = options.Authority,
                     ValidateAudience = true,
-                    ValidAudience = audience,
+                    ValidAudience = options.ClientId,
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromSeconds(30)
+                    ClockSkew = TimeSpan.FromSeconds(30),
+                    NameClaimType = "preferred_username",
+                    RoleClaimType = "role"
                 };
             });
 
