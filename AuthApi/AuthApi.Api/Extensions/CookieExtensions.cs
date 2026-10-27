@@ -11,7 +11,7 @@ public static class CookieExtensions
         string refreshToken,
         int refreshExpiresInSeconds)
     {
-        response.Cookies.Append(TokenCookie.AccessToken, accessToken, new CookieOptions
+        response.Cookies.Append(CookieKeys.AccessToken, accessToken, new CookieOptions
         {
             HttpOnly = true,
             Secure = true, 
@@ -20,7 +20,7 @@ public static class CookieExtensions
             Path = "/"
         });
 
-        response.Cookies.Append(TokenCookie.RefreshToken, refreshToken, new CookieOptions
+        response.Cookies.Append(CookieKeys.RefreshToken, refreshToken, new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
@@ -30,12 +30,9 @@ public static class CookieExtensions
         });
     }
 
-    public static string? GetRefreshToken(this HttpRequest request) =>
-        request.Cookies[TokenCookie.RefreshToken];
-
     public static void DeleteAuthCookies(this HttpResponse response)
     {
-        response.Cookies.Delete(TokenCookie.AccessToken, new CookieOptions { Path = "/" });
-        response.Cookies.Delete(TokenCookie.RefreshToken, new CookieOptions { Path = "/Auth" });
+        response.Cookies.Delete(CookieKeys.AccessToken, new CookieOptions { Path = "/" });
+        response.Cookies.Delete(CookieKeys.RefreshToken, new CookieOptions { Path = "/Auth" });
     }
 }

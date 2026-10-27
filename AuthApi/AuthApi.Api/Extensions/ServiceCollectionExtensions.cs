@@ -1,4 +1,5 @@
-﻿using AuthApi.Api.Interfaces;
+﻿using AuthApi.Api.Constants.Keycloak;
+using AuthApi.Api.Interfaces;
 using AuthApi.Api.Middlewares;
 using AuthApi.Api.Options;
 using AuthApi.Api.Services;
@@ -26,9 +27,11 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddAuthServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<KeycloakOptions>(
-            configuration.GetSection(KeycloakOptions.SectionName));
+            configuration.GetSection(KeycloakSettings.SectionName));
 
         services.AddHttpClient<IAuthService, AuthService>();
+
+        services.AddScoped<IAuthCookieService, AuthCookieService>();
 
         return services;
     }

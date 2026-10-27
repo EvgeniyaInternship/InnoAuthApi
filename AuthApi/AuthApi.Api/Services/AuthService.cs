@@ -15,10 +15,10 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 {
     public async Task<KeycloakTokenResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
     {
-        var parameters = CreateTokenParameters(GrantTypes.Password);
-        parameters[Parameters.Username] = request.Email;
-        parameters[Parameters.Password] = request.Password;
-        parameters[Parameters.Scope] = Scopes.OpenId;
+        var parameters = CreateTokenParameters(KeycloakGrantTypes.Password);
+        parameters[KeycloakParameters.Username] = request.Email;
+        parameters[KeycloakParameters.Password] = request.Password;
+        parameters[KeycloakParameters.Scope] = KeycloakScopes.OpenId;
 
         try
         {
@@ -32,8 +32,8 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
     public async Task<KeycloakTokenResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
     {
-        var parameters = CreateTokenParameters(GrantTypes.RefreshToken);
-        parameters[Parameters.RefreshToken] = request.RefreshToken;
+        var parameters = CreateTokenParameters(KeycloakGrantTypes.RefreshToken);
+        parameters[KeycloakParameters.RefreshToken] = request.RefreshToken;
 
         try
         {
@@ -47,9 +47,9 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
     public async Task<KeycloakTokenResponseDto> ExchangeCodeAsync(ExchangeCodeRequestDto request, CancellationToken cancellationToken = default)
     {
-        var parameters = CreateTokenParameters(GrantTypes.AuthorizationCode);
-        parameters[Parameters.Code] = request.Code;
-        parameters[Parameters.RedirectUri] = request.RedirectUri;
+        var parameters = CreateTokenParameters(KeycloakGrantTypes.AuthorizationCode);
+        parameters[KeycloakParameters.Code] = request.Code;
+        parameters[KeycloakParameters.RedirectUri] = request.RedirectUri;
 
         try
         {
@@ -65,12 +65,12 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
     {
         var parameters = new Dictionary<string, string>
         {
-            [Parameters.ClientId] = options.Value.ClientId,
-            [Parameters.ClientSecret] = options.Value.ClientSecret,
-            [Parameters.RefreshToken] = request.RefreshToken
+            [KeycloakParameters.ClientId] = options.Value.ClientId,
+            [KeycloakParameters.ClientSecret] = options.Value.ClientSecret,
+            [KeycloakParameters.RefreshToken] = request.RefreshToken
         };
 
-        var endpoint = Endpoints.Logout(options.Value.BaseUrl, options.Value.Realm);
+        var endpoint = KeycloakEndpoints.Logout(options.Value.BaseUrl, options.Value.Realm);
         using var response = await httpClient.PostAsync(endpoint, new FormUrlEncodedContent(parameters), cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -95,14 +95,14 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
             enabled = true,
             credentials = new[]
             {
-                new { type = CredentialTypes.Password, value = request.Password, temporary = false }
+                new { type = KeycloakGrantTypes.Password, value = request.Password, temporary = false }
             }
         };
 
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, Endpoints.AdminUsers(options.Value.BaseUrl, options.Value.Realm))
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, KeycloakEndpoints.AdminUsers(options.Value.BaseUrl, options.Value.Realm))
         {
             Content = JsonContent.Create(payload),
-            Headers = { Authorization = new AuthenticationHeaderValue(Schemes.Bearer, adminToken) }
+            Headers = { Authorization = new AuthenticationHeaderValue(KeycloakSchemes.Bearer, adminToken) }
         };
 
         using var response = await httpClient.SendAsync(httpRequest, cancellationToken);
@@ -128,14 +128,14 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
     private Dictionary<string, string> CreateTokenParameters(string grantType) => new()
     {
-        [Parameters.GrantType] = grantType,
-        [Parameters.ClientId] = options.Value.ClientId,
-        [Parameters.ClientSecret] = options.Value.ClientSecret
+        [KeycloakParameters.GrantType] = grantType,
+        [KeycloakParameters.ClientId] = options.Value.ClientId,
+        [KeycloakParameters.ClientSecret] = options.Value.ClientSecret
     };
 
     private async Task<KeycloakTokenResponseDto> RequestTokenAsync(Dictionary<string, string> parameters, CancellationToken cancellationToken)
     {
-        var endpoint = Endpoints.Token(options.Value.BaseUrl, options.Value.Realm);
+        var endpoint = KeycloakEndpoints.Token(options.Value.BaseUrl, options.Value.Realm);
         using var response = await httpClient.PostAsync(endpoint, new FormUrlEncodedContent(parameters), cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -156,7 +156,7 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
     private async Task<string> GetServiceAccountTokenAsync(CancellationToken cancellationToken)
     {
-        var parameters = CreateTokenParameters(GrantTypes.ClientCredentials);
+        var parameters = CreateTokenParameters(KeycloakGrantTypes.ClientCredentials);
 
         try
         {

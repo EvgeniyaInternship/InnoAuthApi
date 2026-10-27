@@ -1,4 +1,5 @@
-﻿using AuthApi.Api.Options;
+﻿using AuthApi.Api.Constants.Keycloak;
+using AuthApi.Api.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -11,20 +12,20 @@ public static class AuthenticationExtensions
         IConfiguration configuration)
     {
         var options = configuration
-            .GetSection(KeycloakOptions.SectionName)
+            .GetSection(KeycloakSettings.SectionName)
             .Get<KeycloakOptions>() ?? new KeycloakOptions();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(jwtOptions =>
             {
-                jwtOptions.Authority = options.Authority;
+                jwtOptions.Authority = KeycloakEndpoints.Authority(options.BaseUrl, options.Realm);
                 jwtOptions.Audience = options.ClientId;
                 jwtOptions.RequireHttpsMetadata = options.RequireHttpsMetadata;
 
                 jwtOptions.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
-                    ValidIssuer = options.Authority,
+                    ValidIssuer = KeycloakEndpoints.Authority(options.BaseUrl, options.Realm),
                     ValidateAudience = true,
                     ValidAudience = options.ClientId,
                     ValidateLifetime = true,

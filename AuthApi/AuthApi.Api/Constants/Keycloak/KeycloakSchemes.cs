@@ -1,6 +1,6 @@
 ﻿namespace AuthApi.Api.Constants.Keycloak;
 
-public static class Schemes
+public static class KeycloakSchemes
 {
     public const string Bearer = "Bearer";
 }

@@ -1,6 +1,6 @@
 ﻿namespace AuthApi.Api.Constants.Keycloak;
 
-public static class GrantTypes
+public static class KeycloakGrantTypes
 {
     public const string Password = "password";
     public const string AuthorizationCode = "authorization_code";

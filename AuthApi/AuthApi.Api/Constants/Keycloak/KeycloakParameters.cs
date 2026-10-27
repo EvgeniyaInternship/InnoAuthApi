@@ -1,6 +1,6 @@
 ﻿namespace AuthApi.Api.Constants.Keycloak;
 
-public static class Parameters
+public static class KeycloakParameters
 {
     public const string GrantType = "grant_type";
     public const string ClientId = "client_id";
