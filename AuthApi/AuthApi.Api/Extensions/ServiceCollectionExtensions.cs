@@ -31,8 +31,6 @@ public static class ServiceCollectionExtensions
 
         services.AddHttpClient<IAuthService, AuthService>();
 
-        services.AddScoped<IAuthCookieService, AuthCookieService>();
-
         return services;
     }
 }
