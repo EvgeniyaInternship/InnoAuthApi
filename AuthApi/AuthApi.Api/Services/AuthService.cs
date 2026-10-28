@@ -1,103 +1,23 @@
-﻿using System.Net;
-using System.Net.Http.Headers;
-using AuthApi.Api.Constants.Keycloak;
+﻿using AuthApi.Api.Constants.Keycloak;
 using AuthApi.Api.DTOs.Requests;
 using AuthApi.Api.DTOs.Responses;
 using AuthApi.Api.Exceptions;
 using AuthApi.Api.Extensions;
 using AuthApi.Api.Interfaces;
+using AuthApi.Api.Mappings;
 using AuthApi.Api.Options;
 using Microsoft.Extensions.Options;
+using System.Net;
+using System.Net.Http.Headers;
 
 namespace AuthApi.Api.Services;
 
 public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions> options) : IAuthService
 {
-    public async Task<KeycloakTokenResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
-    {
-        var parameters = CreateTokenParameters(KeycloakGrantTypes.Password);
-        parameters[KeycloakParameters.Username] = request.Email;
-        parameters[KeycloakParameters.Password] = request.Password;
-        parameters[KeycloakParameters.Scope] = KeycloakScopes.OpenId;
-
-        try
-        {
-            return await RequestTokenAsync(parameters, cancellationToken);
-        }
-        catch (InvalidGrantException ex)
-        {
-            throw new UnauthorizedAccessException("Invalid email or password.", ex);
-        }
-    }
-
-    public async Task<KeycloakTokenResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
-    {
-        var parameters = CreateTokenParameters(KeycloakGrantTypes.RefreshToken);
-        parameters[KeycloakParameters.RefreshToken] = request.RefreshToken;
-
-        try
-        {
-            return await RequestTokenAsync(parameters, cancellationToken);
-        }
-        catch (InvalidGrantException ex)
-        {
-            throw new UnauthorizedAccessException("Invalid or expired refresh token.", ex);
-        }
-    }
-
-    public async Task<KeycloakTokenResponseDto> ExchangeCodeAsync(ExchangeCodeRequestDto request, CancellationToken cancellationToken = default)
-    {
-        var parameters = CreateTokenParameters(KeycloakGrantTypes.AuthorizationCode);
-        parameters[KeycloakParameters.Code] = request.Code;
-        parameters[KeycloakParameters.RedirectUri] = request.RedirectUri;
-
-        try
-        {
-            return await RequestTokenAsync(parameters, cancellationToken);
-        }
-        catch (InvalidGrantException ex)
-        {
-            throw new ArgumentException("The provided authorization code is invalid or has expired.", request.Code, ex);
-        }
-    }
-
-    public async Task LogoutAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
-    {
-        var parameters = new Dictionary<string, string>
-        {
-            [KeycloakParameters.ClientId] = options.Value.ClientId,
-            [KeycloakParameters.ClientSecret] = options.Value.ClientSecret,
-            [KeycloakParameters.RefreshToken] = request.RefreshToken
-        };
-
-        var endpoint = KeycloakEndpoints.Logout(options.Value.BaseUrl, options.Value.Realm);
-        using var response = await httpClient.PostAsync(endpoint, new FormUrlEncodedContent(parameters), cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var (Code, Message) = await response.ReadKeycloakErrorAsync(cancellationToken);
-            throw response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized
-                ? new UnauthorizedAccessException($"Logout rejected by identity provider: {Message}")
-                : new IdentityProviderException($"Logout failed with status {(int)response.StatusCode}: {Message}");
-        }
-    }
-
     public async Task<Guid> RegisterAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
         var adminToken = await GetServiceAccountTokenAsync(cancellationToken);
-
-        var payload = new
-        {
-            username = request.Email,
-            email = request.Email,
-            firstName = request.FirstName,
-            lastName = request.LastName,
-            enabled = true,
-            credentials = new[]
-            {
-                new { type = KeycloakGrantTypes.Password, value = request.Password, temporary = false }
-            }
-        };
+        var payload = request.ToKeycloakUserPayload();
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, KeycloakEndpoints.AdminUsers(options.Value.BaseUrl, options.Value.Realm))
         {
@@ -115,8 +35,8 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
             {
                 HttpStatusCode.Conflict => new ConflictException($"User with email '{request.Email}' already exists."),
                 HttpStatusCode.BadRequest => new ArgumentException($"User registration failed: {Message}"),
-                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new InvalidOperationException("API service account lacks 'manage-users' permissions in Keycloak."),
-                _ => new IdentityProviderException($"Registration failed with status {(int)response.StatusCode}: {Message}")
+                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new InvalidOperationException("API lacks permissions in Keycloak."),
+                _ => new IdentityProviderException($"Registration failed: {Message}")
             };
         }
 
@@ -126,12 +46,37 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
         return Guid.Parse(location.Segments.Last().TrimEnd('/'));
     }
 
-    private Dictionary<string, string> CreateTokenParameters(string grantType) => new()
+    public async Task<KeycloakTokenResponseDto> ExchangeCodeAsync(ExchangeCodeRequestDto request, CancellationToken cancellationToken = default)
     {
-        [KeycloakParameters.GrantType] = grantType,
-        [KeycloakParameters.ClientId] = options.Value.ClientId,
-        [KeycloakParameters.ClientSecret] = options.Value.ClientSecret
-    };
+        var parameters = request.ToTokenParameters(options.Value.ClientId, options.Value.ClientSecret);
+        return await RequestTokenAsync(parameters, cancellationToken);
+    }
+
+    public async Task<KeycloakTokenResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var parameters = request.ToTokenParameters(options.Value.ClientId, options.Value.ClientSecret);
+        return await RequestTokenAsync(parameters, cancellationToken);
+    }
+
+    public async Task<KeycloakTokenResponseDto> LoginAsync(LoginRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var parameters = request.ToTokenParameters(options.Value.ClientId, options.Value.ClientSecret);
+        return await RequestTokenAsync(parameters, cancellationToken);
+    }
+
+    public async Task LogoutAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var parameters = request.ToLogoutParameters(options.Value.ClientId, options.Value.ClientSecret);
+        var endpoint = KeycloakEndpoints.Logout(options.Value.BaseUrl, options.Value.Realm);
+
+        using var response = await httpClient.PostAsync(endpoint, new FormUrlEncodedContent(parameters), cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var (_, Message) = await response.ReadKeycloakErrorAsync(cancellationToken);
+            throw new IdentityProviderException($"Logout failed: {Message}");
+        }
+    }
 
     private async Task<KeycloakTokenResponseDto> RequestTokenAsync(Dictionary<string, string> parameters, CancellationToken cancellationToken)
     {
@@ -156,16 +101,8 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
     private async Task<string> GetServiceAccountTokenAsync(CancellationToken cancellationToken)
     {
-        var parameters = CreateTokenParameters(KeycloakGrantTypes.ClientCredentials);
-
-        try
-        {
-            var token = await RequestTokenAsync(parameters, cancellationToken);
-            return token.AccessToken;
-        }
-        catch (IdentityProviderException ex)
-        {
-            throw new InvalidOperationException("Failed to acquire service account token. Verify Keycloak client credentials.", ex);
-        }
+        var parameters = AuthMappingExtensions.ToClientCredentialsParameters(options.Value.ClientId, options.Value.ClientSecret);
+        var token = await RequestTokenAsync(parameters, cancellationToken);
+        return token.AccessToken;
     }
 }

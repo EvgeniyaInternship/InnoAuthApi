@@ -7,6 +7,7 @@ builder.Services.AddApiControllers();
 builder.Services.AddSwaggerWithJwtAuth();
 builder.Services.AddKeycloakAuthentication(builder.Configuration);
 builder.Services.AddAuthServices(builder.Configuration);
+builder.Services.AddApplicationServices();
 
 var app = builder.Build();
 

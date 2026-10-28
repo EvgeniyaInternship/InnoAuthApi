@@ -3,6 +3,8 @@ using AuthApi.Api.Interfaces;
 using AuthApi.Api.Middlewares;
 using AuthApi.Api.Options;
 using AuthApi.Api.Services;
+using FluentValidation;
+using SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions;
 
 namespace AuthApi.Api.Extensions;
 
@@ -33,4 +35,17 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+    {
+        services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+
+        services.AddFluentValidationAutoValidation(configuration =>
+        {
+            configuration.EnableCustomBindingSourceAutomaticValidation = true;
+            configuration.EnableNullBindingSourceAutomaticValidation = true;
+        });
+        return services;
+    }
+
 }
