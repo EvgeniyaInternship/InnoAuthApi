@@ -1,4 +1,5 @@
-﻿using AuthApi.Api.DTOs.Requests;
+﻿using AuthApi.Api.Constants;
+using AuthApi.Api.DTOs.Requests;
 using FluentValidation;
 
 namespace AuthApi.Api.Validators;
@@ -32,5 +33,11 @@ public sealed class RegisterUserRequestDtoValidator : AbstractValidator<Register
             .WithMessage("Last name is required.")
             .MaximumLength(50)
             .WithMessage("Last name cannot exceed 50 characters.");
+
+        RuleFor(x => x.Role)
+            .NotEmpty()
+            .WithMessage("Role is required.")
+            .Must(role => AccountRoles.All.Contains(role))
+            .WithMessage("Role must be Admin, Receptionist, Doctor, or Patient.");
     }
 }
