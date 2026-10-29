@@ -10,6 +10,5 @@ public interface IAuthService
     AuthorizationLoginDto CreateLogin();
     Task<AuthorizationCallbackResultDto> CompleteLoginAsync(AuthorizationCallbackDto callback, CancellationToken cancellationToken = default);
     Task<KeycloakTokenResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default);
-    Task<KeycloakTokenResponseDto> ExchangeCodeAsync(ExchangeCodeRequestDto request, string? codeVerifier = null, CancellationToken cancellationToken = default);
     Task LogoutAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default);
 }

@@ -110,25 +110,19 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
         if (string.IsNullOrWhiteSpace(callback.CodeVerifier))
             throw new ArgumentException("Authorization code verifier is missing.");
 
-        var tokens = await ExchangeCodeAsync(
-            new ExchangeCodeRequestDto(callback.Code, redirectUri),
-            callback.CodeVerifier,
-            cancellationToken);
+        var parameters = AuthMappingExtensions.ToAuthorizationCodeParameters(
+            options.Value.ClientId,
+            options.Value.ClientSecret,
+            callback.Code,
+            redirectUri,
+            callback.CodeVerifier);
+        var tokens = await RequestTokenAsync(parameters, cancellationToken);
 
         var postLoginRedirectUri = Uri.TryCreate(options.Value.PostLoginRedirectUri, UriKind.Absolute, out var postLoginUri)
             ? postLoginUri.ToString()
             : null;
 
         return new AuthorizationCallbackResultDto(tokens, postLoginRedirectUri);
-    }
-
-    public async Task<KeycloakTokenResponseDto> ExchangeCodeAsync(
-        ExchangeCodeRequestDto request,
-        string? codeVerifier = null,
-        CancellationToken cancellationToken = default)
-    {
-        var parameters = request.ToTokenParameters(options.Value.ClientId, options.Value.ClientSecret, codeVerifier);
-        return await RequestTokenAsync(parameters, cancellationToken);
     }
 
     public async Task<KeycloakTokenResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)

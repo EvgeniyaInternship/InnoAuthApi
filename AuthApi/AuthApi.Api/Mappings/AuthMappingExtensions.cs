@@ -55,25 +55,22 @@ public static class AuthMappingExtensions
         return $"{authorizeEndpoint}?{queryString}";
     }
 
-    public static Dictionary<string, string> ToTokenParameters(
-        this ExchangeCodeRequestDto dto,
+    public static Dictionary<string, string> ToAuthorizationCodeParameters(
         string clientId,
         string clientSecret,
-        string? codeVerifier = null)
+        string code,
+        string redirectUri,
+        string codeVerifier)
     {
-        var parameters = new Dictionary<string, string>
+        return new Dictionary<string, string>
         {
             [KeycloakParameters.GrantType] = KeycloakGrantTypes.AuthorizationCode,
             [KeycloakParameters.ClientId] = clientId,
             [KeycloakParameters.ClientSecret] = clientSecret,
-            [KeycloakParameters.Code] = dto.Code,
-            [KeycloakParameters.RedirectUri] = dto.RedirectUri
+            [KeycloakParameters.Code] = code,
+            [KeycloakParameters.RedirectUri] = redirectUri,
+            [KeycloakParameters.CodeVerifier] = codeVerifier
         };
-
-        if (!string.IsNullOrWhiteSpace(codeVerifier))
-            parameters[KeycloakParameters.CodeVerifier] = codeVerifier;
-
-        return parameters;
     }
 
     public static Dictionary<string, string> ToTokenParameters(

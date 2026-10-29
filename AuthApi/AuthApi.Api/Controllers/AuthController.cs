@@ -89,22 +89,6 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return Ok(tokens);
     }
 
-    [HttpPost("exchange-code")]
-    [ProducesResponseType(typeof(KeycloakTokenResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ExchangeCode([FromBody] ExchangeCodeRequestDto dto, CancellationToken cancellationToken)
-    {
-        var tokens = await authService.ExchangeCodeAsync(
-            dto,
-            Request.Cookies[CookieKeys.CodeVerifier],
-            cancellationToken);
-
-        Response.AppendAuthCookies(tokens.AccessToken, tokens.ExpiresIn, tokens.RefreshToken, tokens.RefreshExpiresIn);
-        Response.DeleteAuthorizationFlowCookies();
-        return Ok(tokens);
-    }
-
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
