@@ -25,7 +25,7 @@ public static class AuthMappingExtensions
             },
             attributes = new Dictionary<string, string[]>
             {
-                ["role"] = [dto.Role]
+                ["role"] = [dto.Role.ToString()]
             }
         };
     }

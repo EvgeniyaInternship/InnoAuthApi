@@ -48,7 +48,7 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
 
         try
         {
-            await AssignRealmRoleAsync(adminToken, userId, request.Role, cancellationToken);
+            await AssignRealmRoleAsync(adminToken, userId, request.Role.ToString(), cancellationToken);
         }
         catch
         {
