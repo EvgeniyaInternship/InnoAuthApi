@@ -2,5 +2,5 @@
 
 public static class KeycloakScopes
 {
-    public const string OpenId = "openid";
+    public const string OpenIdProfile = "openid profile";
 }

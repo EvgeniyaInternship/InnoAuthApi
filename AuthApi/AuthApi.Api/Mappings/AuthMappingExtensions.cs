@@ -42,7 +42,7 @@ public static class AuthMappingExtensions
             [KeycloakParameters.ClientId] = clientId,
             [KeycloakParameters.RedirectUri] = redirectUri,
             [KeycloakParameters.ResponseType] = KeycloakResponseTypes.Code,
-            [KeycloakParameters.Scope] = KeycloakScopes.OpenId,
+            [KeycloakParameters.Scope] = KeycloakScopes.OpenIdProfile,
             [KeycloakParameters.State] = state,
             [KeycloakParameters.CodeChallenge] = codeChallenge,
             [KeycloakParameters.CodeChallengeMethod] = KeycloakCodeChallengeMethods.S256
