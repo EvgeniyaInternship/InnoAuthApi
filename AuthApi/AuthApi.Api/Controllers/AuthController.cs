@@ -3,13 +3,15 @@ using AuthApi.Api.DTOs.Requests;
 using AuthApi.Api.DTOs.Responses;
 using AuthApi.Api.Extensions;
 using AuthApi.Api.Interfaces;
+using AuthApi.Api.Options;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace AuthApi.Api.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public sealed class AuthController(IAuthService authService) : ControllerBase
+public sealed class AuthController(IAuthService authService, IOptions<KeycloakOptions> keycloakOptions) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
@@ -89,15 +91,19 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return Ok(tokens);
     }
 
-    [HttpPost("logout")]
+    [HttpGet("logout")]
+    [ProducesResponseType(StatusCodes.Status302Found)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto dto, CancellationToken cancellationToken)
+    public async Task<IActionResult> LogoutAndReturn(CancellationToken cancellationToken)
     {
-        await authService.LogoutAsync(dto, cancellationToken);
+        var refreshToken = Request.Cookies[CookieKeys.RefreshToken];
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+            await authService.LogoutAsync(new RefreshTokenRequestDto(refreshToken), cancellationToken);
+
         Response.DeleteAuthCookies();
+        if (Uri.TryCreate(keycloakOptions.Value.PostLoginRedirectUri, UriKind.Absolute, out var target))
+            return Redirect(target.ToString());
+
         return NoContent();
     }
 }

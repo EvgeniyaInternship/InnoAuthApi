@@ -21,20 +21,29 @@ public static class CookieExtensions
             Path = "/"
         });
 
-        response.Cookies.Append(CookieKeys.RefreshToken, refreshToken, new CookieOptions
+        var refreshOptions = new CookieOptions
         {
             HttpOnly = true,
             Secure = secure,
             SameSite = SameSiteMode.Strict,
-            Expires = DateTimeOffset.UtcNow.AddSeconds(refreshExpiresInSeconds),
-            Path = "/Auth"
-        });
+            Path = "/"
+        };
+        if (refreshExpiresInSeconds > 0)
+            refreshOptions.Expires = DateTimeOffset.UtcNow.AddSeconds(refreshExpiresInSeconds);
+
+        response.Cookies.Append(CookieKeys.RefreshToken, refreshToken, refreshOptions);
     }
 
     public static void DeleteAuthCookies(this HttpResponse response)
     {
         var secure = response.HttpContext.Request.IsHttps;
         response.Cookies.Delete(CookieKeys.AccessToken, new CookieOptions
+        {
+            Path = "/",
+            Secure = secure,
+            SameSite = SameSiteMode.Strict
+        });
+        response.Cookies.Delete(CookieKeys.RefreshToken, new CookieOptions
         {
             Path = "/",
             Secure = secure,
