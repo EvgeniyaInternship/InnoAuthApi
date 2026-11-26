@@ -13,7 +13,10 @@ using System.Net.Http.Headers;
 
 namespace AuthApi.Api.Services;
 
-public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions> options) : IAuthService
+public sealed class AuthService(
+    HttpClient httpClient,
+    IOptions<KeycloakOptions> options,
+    ILogger<AuthService> logger) : IAuthService
 {
     public async Task<Guid> RegisterAsync(RegisterUserRequestDto request, CancellationToken cancellationToken = default)
     {
@@ -56,6 +59,7 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
             throw;
         }
 
+        logger.LogInformation("Registered user {UserId} with role {Role}.", userId, request.Role);
         return userId;
     }
 
@@ -63,6 +67,7 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
     {
         var adminToken = await GetServiceAccountTokenAsync(cancellationToken);
         await DeleteUserAsync(adminToken, userId, cancellationToken);
+        logger.LogInformation("Deleted user {UserId}.", userId);
     }
 
     public AuthorizationLoginDto CreateLogin()
@@ -86,6 +91,7 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
             state,
             codeChallenge);
 
+        logger.LogInformation("Login started.");
         return new AuthorizationLoginDto(authorizationUrl, state, codeVerifier);
     }
 
@@ -122,13 +128,16 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
             ? postLoginUri.ToString()
             : null;
 
+        logger.LogInformation("Login callback completed.");
         return new AuthorizationCallbackResultDto(tokens, postLoginRedirectUri);
     }
 
     public async Task<KeycloakTokenResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
     {
         var parameters = request.ToTokenParameters(options.Value.ClientId, options.Value.ClientSecret);
-        return await RequestTokenAsync(parameters, cancellationToken);
+        var tokens = await RequestTokenAsync(parameters, cancellationToken);
+        logger.LogInformation("Refresh token succeeded.");
+        return tokens;
     }
 
     public async Task LogoutAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken = default)
@@ -143,6 +152,8 @@ public sealed class AuthService(HttpClient httpClient, IOptions<KeycloakOptions>
             var (_, Message) = await response.ReadKeycloakErrorAsync(cancellationToken);
             throw new IdentityProviderException($"Logout failed: {Message}");
         }
+
+        logger.LogInformation("Logout completed.");
     }
 
     private async Task<KeycloakTokenResponseDto> RequestTokenAsync(Dictionary<string, string> parameters, CancellationToken cancellationToken)
